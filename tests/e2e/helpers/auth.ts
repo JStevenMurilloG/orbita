@@ -81,12 +81,29 @@ export async function getEmailLinkPath(
   throw new Error(`No llegó el correo "${subject}" a ${to}`);
 }
 
+/**
+ * Destino tras iniciar sesión: Hoy, o el onboarding si el usuario aún no tiene trimestres
+ * (`/hoy` redirige a `/bienvenida`).
+ */
+export const AFTER_LOGIN_URL = /\/(hoy|bienvenida)$/;
+
 export async function login(page: Page, email: string, password: string) {
   await page.goto("/login");
   await page.getByLabel("Correo").fill(email);
   await page.getByLabel("Contraseña", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Iniciar sesión" }).click();
-  await expect(page).toHaveURL(/\/hoy$/);
+  await expectAfterLoginPage(page);
+}
+
+/**
+ * Espera a que la página final tras iniciar sesión esté pintada (no solo a la URL), para no
+ * navegar mientras sigue una transición del cliente.
+ */
+export async function expectAfterLoginPage(page: Page) {
+  await expect(
+    page.getByRole("heading", { level: 1, name: /^(Hoy|Te damos la bienvenida)/ }),
+  ).toBeVisible();
+  await expect(page).toHaveURL(AFTER_LOGIN_URL);
 }
 
 export async function openUserMenu(page: Page) {

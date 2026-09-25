@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { publicEnv } from "@/lib/env.public";
 import { AppError, toResult, type Result } from "@/lib/errors";
+import { hasAnyTerm } from "@/features/terms/service";
 import { createClient } from "@/lib/supabase/server";
 import {
   changePasswordSchema,
@@ -14,7 +15,7 @@ import {
   signOutSchema,
 } from "./schemas";
 import * as authService from "./service";
-import { isRecentEmailLinkSession, safeNextPath } from "./utils";
+import { DEFAULT_AFTER_LOGIN, isRecentEmailLinkSession, safeNextPath } from "./utils";
 
 /**
  * Enlace de vuelta para los flujos de Supabase que usan PKCE (plantillas por defecto).
@@ -31,11 +32,17 @@ function callbackUrl(next: string): string {
 export async function loginAction(input: unknown, next?: unknown): Promise<Result<never>> {
   const result = await toResult(async () => {
     const data = loginSchema.parse(input);
-    await authService.signIn(await createClient(), data);
+    const supabase = await createClient();
+    await authService.signIn(supabase, data);
+    const target = safeNextPath(next);
+    // Sin trimestres, Hoy lleva al onboarding. Se decide aquí porque el redirect de una
+    // Server Action no actualiza la URL si el destino vuelve a redirigir (proxy/página).
+    if (target === DEFAULT_AFTER_LOGIN && !(await hasAnyTerm(supabase))) return "/bienvenida";
+    return target;
   });
   if (!result.ok) return result;
   // redirect() lanza una excepción de control: va fuera de toResult.
-  redirect(safeNextPath(next));
+  redirect(result.data);
 }
 
 export async function registerAction(input: unknown): Promise<Result<{ email: string }>> {

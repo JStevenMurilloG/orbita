@@ -3,6 +3,7 @@ import { OrbitIcon } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { updateThemeAction } from "@/features/profile/actions";
 import { UserMenu } from "@/features/profile/components/user-menu";
+import type { TermSummary } from "@/features/terms/types";
 import { NavList } from "./nav-list";
 import { TermSwitcher } from "./term-switcher";
 import { ThemeToggle } from "./theme-toggle";
@@ -22,11 +23,13 @@ function Brand() {
  */
 export function AppShell({
   children,
-  termName,
+  terms,
+  activeTermId,
   user,
 }: {
   children: React.ReactNode;
-  termName?: string | null;
+  terms: TermSummary[];
+  activeTermId: string | null;
   user: { fullName: string; email: string | null };
 }) {
   return (
@@ -36,7 +39,7 @@ export function AppShell({
         className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col gap-4 border-r bg-sidebar p-4 lg:flex"
       >
         <Brand />
-        <TermSwitcher termName={termName} />
+        <TermSwitcher terms={terms} activeTermId={activeTermId} />
         <nav className="flex flex-col gap-1">
           <NavList section="primary" />
         </nav>
@@ -55,7 +58,7 @@ export function AppShell({
           <Brand />
           <div className="flex min-w-0 items-center gap-1">
             <div className="max-w-44">
-              <TermSwitcher termName={termName} />
+              <TermSwitcher terms={terms} activeTermId={activeTermId} />
             </div>
             <ThemeToggle persist={updateThemeAction} />
             <UserMenu fullName={user.fullName} email={user.email} />

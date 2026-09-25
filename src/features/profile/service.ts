@@ -5,7 +5,7 @@ import type { UpdateProfileInput } from "./schemas";
 import type { Profile } from "./types";
 
 const PROFILE_COLUMNS =
-  "id, full_name, timezone, week_starts_on, theme, onboarded_at, created_at, updated_at";
+  "id, full_name, timezone, week_starts_on, theme, active_term_id, onboarded_at, created_at, updated_at";
 
 /** Perfil del usuario autenticado (RLS garantiza que solo puede leer el suyo). */
 export async function getProfile(

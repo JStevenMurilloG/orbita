@@ -7,13 +7,32 @@ export type Database = {
           Tables: {
             "profiles": {
                   Row: {
-                    "created_at": string,"full_name": string,"id": string,"onboarded_at": string | null,"theme": string,"timezone": string,"updated_at": string,"week_starts_on": number
+                    "active_term_id": string | null,"created_at": string,"full_name": string,"id": string,"onboarded_at": string | null,"theme": string,"timezone": string,"updated_at": string,"week_starts_on": number
                   }
                   Insert: {
-                    "created_at"?: string,"full_name": string,"id": string,"onboarded_at"?: string | null,"theme"?: string,"timezone"?: string,"updated_at"?: string,"week_starts_on"?: number
+                    "active_term_id"?: string | null,"created_at"?: string,"full_name": string,"id": string,"onboarded_at"?: string | null,"theme"?: string,"timezone"?: string,"updated_at"?: string,"week_starts_on"?: number
                   }
                   Update: {
-                    "created_at"?: string,"full_name"?: string,"id"?: string,"onboarded_at"?: string | null,"theme"?: string,"timezone"?: string,"updated_at"?: string,"week_starts_on"?: number
+                    "active_term_id"?: string | null,"created_at"?: string,"full_name"?: string,"id"?: string,"onboarded_at"?: string | null,"theme"?: string,"timezone"?: string,"updated_at"?: string,"week_starts_on"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "profiles_active_term_fkey"
+      columns: ["active_term_id","id"]
+isOneToOne: false
+      referencedRelation: "terms"
+      referencedColumns: ["id","user_id"]
+    }
+                  ]
+                },"terms": {
+                  Row: {
+                    "archived_at": string | null,"created_at": string,"description": string | null,"end_date": string,"finished_at": string | null,"id": string,"name": string,"start_date": string,"status": Database["public"]['Enums']["term_status"],"timezone": string,"updated_at": string,"user_id": string,"year": number
+                  }
+                  Insert: {
+                    "archived_at"?: string | null,"created_at"?: string,"description"?: string | null,"end_date": string,"finished_at"?: string | null,"id"?: string,"name": string,"start_date": string,"status"?: Database["public"]['Enums']["term_status"],"timezone": string,"updated_at"?: string,"user_id"?: string,"year": number
+                  }
+                  Update: {
+                    "archived_at"?: string | null,"created_at"?: string,"description"?: string | null,"end_date"?: string,"finished_at"?: string | null,"id"?: string,"name"?: string,"start_date"?: string,"status"?: Database["public"]['Enums']["term_status"],"timezone"?: string,"updated_at"?: string,"user_id"?: string,"year"?: number
                   }
                   Relationships: [
                     
@@ -37,7 +56,7 @@ export type Database = {
                            }
           }
           Enums: {
-            [_ in never]: never
+            "term_status": "active"|"finished"|"archived"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -153,7 +172,7 @@ export type CompositeTypes<
 export const Constants = {
   "public": {
           Enums: {
-            
+            "term_status": ["active", "finished", "archived"]
           }
         }
 } as const

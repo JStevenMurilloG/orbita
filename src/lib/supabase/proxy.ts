@@ -9,6 +9,13 @@ export function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname === p || (p !== "/" && pathname.startsWith(`${p}/`)));
 }
 
+/** Redirección que conserva las cookies de sesión refrescadas en `response`. */
+function redirectWithCookies(url: URL, response: NextResponse) {
+  const redirect = NextResponse.redirect(url);
+  for (const cookie of response.cookies.getAll()) redirect.cookies.set(cookie);
+  return redirect;
+}
+
 /**
  * Refresca la sesión de Supabase en cada petición y redirige a /login si falta.
  * Es solo UX: la barrera real es requireUser() + RLS.
@@ -46,6 +53,21 @@ export async function updateSession(request: NextRequest) {
     url.search = "";
     url.searchParams.set("next", `${pathname}${search}`);
     return NextResponse.redirect(url);
+  }
+
+  // Sin trimestres, Hoy lleva al onboarding (plan §11). Se decide aquí y no en la página:
+  // /hoy se transmite en streaming (loading.tsx) y un redirect() dentro de la página llegaría
+  // al navegador como redirección en cliente, después de pintar. RLS limita el conteo al usuario.
+  if (isAuthenticated && pathname === "/hoy") {
+    const { count, error } = await supabase
+      .from("terms")
+      .select("id", { count: "exact", head: true });
+    if (!error && count === 0) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/bienvenida";
+      url.search = "";
+      return redirectWithCookies(url, response);
+    }
   }
 
   return response;

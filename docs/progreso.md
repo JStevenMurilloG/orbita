@@ -6,8 +6,9 @@ Registro de lo que se ha construido en cada fase del [plan maestro](plan-maestro
 | ------------------------------- | --------------------------------------- | ---------- |
 | 0 — Arquitectura y base técnica | ✅ Completada (con pendientes externos) | 2026-09-25 |
 | 1 — Autenticación y usuarios    | ✅ Completada (con pendientes externos) | 2026-09-25 |
-| 2 — Trimestres                  | ⏳ Siguiente                            | —          |
-| 3–6 (MVP)                       | Pendiente                               | —          |
+| 2 — Trimestres                  | ✅ Completada                           | 2026-09-25 |
+| 3 — Clases y docentes           | ⏳ Siguiente                            | —          |
+| 4–6 (MVP)                       | Pendiente                               | —          |
 
 ---
 
@@ -79,3 +80,45 @@ Registro de lo que se ha construido en cada fase del [plan maestro](plan-maestro
 - Tras el login se va a `/hoy`; en Fase 2 `/hoy` debe llevar a `/bienvenida` si no hay trimestres (y marcar `onboarded_at`).
 - Patrón de formularios listo: `src/components/forms/*` + RHF + `applyServerErrors`. Helpers E2E: `tests/e2e/helpers/auth.ts` (`createConfirmedUser`, `login`, `logout`).
 - `AppShell` ya recibe `termName`; `TermSwitcher` sigue siendo un esqueleto.
+
+---
+
+## Fase 2 — Trimestres
+
+### Hecho
+
+- **BD** (`20260925020000_terms.sql`): enum `term_status` (`active`/`finished`/`archived`) y tabla `terms` (`user_id default auth.uid()`, nombre 1–80, año 2000–2100, `end_date >= start_date`, `timezone` validada con `is_valid_timezone()`, descripción ≤ 1000, `UNIQUE (id, user_id)` para las FKs compuestas, índice `(user_id, status, start_date desc)`, `set_updated_at`). CHECKs de coherencia estado ↔ `finished_at`/`archived_at`.
+  - Trigger `terms_before_write`: zona del perfil por defecto; mantiene `finished_at`/`archived_at`; un trimestre **archivado es de solo lectura** (solo se permite desarchivar `archived → finished` sin tocar otros campos, o eliminarlo) → `P0001 TERM_ARCHIVED`.
+  - Trigger `terms_after_insert` (`SECURITY DEFINER`): si el usuario no tiene trimestre activo, el nuevo pasa a serlo (el primero siempre) y marca `profiles.onboarded_at`.
+  - RLS con `(select auth.uid())` y **privilegios por columna** (insert: `id` + campos editables; update: campos editables y `status`; nunca `user_id` ni marcas de tiempo).
+  - `profiles.active_term_id` con FK compuesta `(active_term_id, id) → terms(id, user_id) ON DELETE SET NULL (active_term_id)`; añadida al `grant update` por columnas de `profiles`.
+  - **Plantilla `assert_term_writable()`** para tablas hijas con `term_id`: bloquea INSERT/UPDATE/DELETE si el trimestre (nuevo o anterior) está archivado; deja pasar los borrados en cascada (`pg_trigger_depth() > 1`) para poder eliminar el trimestre o la cuenta. Uso documentado en la migración.
+- **Seed**: A tiene "Segundo trimestre" (activo) y "Primer trimestre" (archivado); B tiene "Semestre de otoño".
+- **features/terms**: esquemas Zod (mismos límites que la BD, orden de fechas en `end_date`), `service.ts` (listar, obtener, crear con aviso de solapamiento, editar, transiciones finalizar/reabrir/archivar/desarchivar validadas en servidor y BD, eliminar verificando el nombre, `setActiveTerm`, `hasAnyTerm`), Server Actions `requireUser → parse → service → Result<T>`, `queries.ts` (`getCurrentTerms`, `getActiveTerm`, cacheadas por petición), utilidades puras (`nextTermStatus`, `termPeriod`, `newTermDefaults` con "hoy" en la zona del perfil).
+- **UI**: `TermSwitcher` funcional (desktop y móvil; en curso/finalizados y archivados por separado; enlaces a todos y a nuevo), `/trimestres` (lista en curso/finalizados + archivados), `/trimestres/nuevo` (casilla "Usarlo como trimestre activo"), `/trimestres/[termId]` (resumen, usar como activo, finalizar/reabrir, archivar con `ArchiveTermDialog`, edición, eliminar con `DeleteTermDialog`: diálogo + escribir el nombre exacto, comprobado de nuevo en servidor), `/bienvenida` (onboarding con layout propio), `ReadOnlyBanner` con "Desarchivar" (en el layout si el activo está archivado, o en la página del trimestre consultado), `TermStatusBadge`, `/hoy` muestra el trimestre activo y avisa si hoy cae fuera de sus fechas.
+- **Onboarding**: sin trimestres, `/hoy` → `/bienvenida` (redirección en el proxy, 307 real) y el login va directo a `/bienvenida`.
+- **lib**: `formatCivilDate` / `formatCivilDateRange` (fechas civiles sin corrimiento de zona). shadcn: `dialog`, `alert-dialog`, `textarea`.
+- **Accesibilidad**: `--destructive` en claro oscurecido (el botón destructivo de shadcn daba 4.0:1) y colores "rich" de Sonner en claro oscurecidos (verde/azul/ámbar < 4.5:1). La auditoría axe espera a que terminen las animaciones.
+- **Tests**: Vitest 179 (esquemas y utilidades de trimestres, formato de fechas civiles); pgTAP 78 (49 nuevos: estructura, FK compuesta de `active_term_id`, A↔B sin lectura/edición/borrado cruzado, B no puede activar ni colgar hijos de trimestres de A, CHECKs, privilegios por columna, primer trimestre activo + onboarding, ciclo de vida y solo lectura, plantilla `assert_term_writable` sobre una tabla hija temporal, cascadas); Playwright 66 (desktop + móvil): onboarding, crear varios y cambiar el activo (persistente), finalizar/reabrir/archivar/consultar/desarchivar, editar, eliminar con doble confirmación, aislamiento entre usuarios, axe claro/oscuro en onboarding, trimestres y trimestre archivado.
+
+### Decisiones y límites conocidos
+
+- El estado `active` se muestra como **"En curso"** para no confundirlo con el **trimestre activo** (la selección del usuario).
+- Archivar se permite desde "en curso" o "finalizado" (fija también `finished_at`); desarchivar lo deja "finalizado". Un trimestre archivado se puede eliminar.
+- Solapamiento de fechas permitido: crear/editar devuelve `overlaps` y la UI muestra un aviso.
+- El redirect a `/bienvenida` no se hace en la página `/hoy`: con `(app)/loading.tsx` la página se transmite en streaming y un `redirect()` llegaría como redirección en cliente tras pintar. Se hace en el proxy (solo para `/hoy`, una consulta `count` con RLS). Además, el redirect de una Server Action no actualiza la URL si el destino vuelve a redirigir, por eso `loginAction` decide el destino él mismo.
+- `/api/v1/terms` no se ha construido (misma decisión que en Fase 1: se añadirá con el primer cliente externo; la capa `service.ts` ya está lista).
+- El borrado de un trimestre con archivos en Storage necesitará el job de purga (Fase 8).
+
+### Pendiente (requiere cuentas del usuario)
+
+- Siguen abiertos los pendientes de Fases 0 y 1: proteger `main`, proyectos Supabase staging/prod, Vercel, SMTP con Resend y dominio.
+
+### Notas para la Fase 3
+
+- `courses`: FK `(term_id, user_id) → terms(id, user_id) ON DELETE CASCADE`, `UNIQUE (id, user_id)` y `UNIQUE (id, term_id, user_id)` (plan §8), `color` con CHECK contra los 12 tokens de `src/lib/design/course-colors.ts`, soft delete (`deleted_at`) e índice `(term_id, position) where deleted_at is null`. Añadir el trigger `courses_assert_term_writable` con `public.assert_term_writable()` y probarlo en pgTAP (ver `supabase/tests/020_terms.test.sql`).
+- `teachers` no tiene `term_id` (reutilizables entre trimestres) → no lleva la plantilla; `course_teachers` sí depende de una clase: bloquear su escritura si la clase está en un trimestre archivado (trigger propio que resuelva el `term_id` de la clase).
+- Contexto: `getActiveTerm()` / `getCurrentTerms()` (`features/terms/queries`). `/clases` debe redirigir a `/trimestres/[activeTermId]/clases`; sin trimestre activo, a `/trimestres`. En trimestres archivados, ocultar/deshabilitar crear y editar (el `ReadOnlyBanner` ya se muestra) y mapear `TERM_ARCHIVED` (409) en los formularios.
+- Aislamiento: crear una clase en un trimestre ajeno debe fallar por la FK compuesta (23503 → `NOT_FOUND`).
+- Helpers E2E: `tests/e2e/helpers/terms.ts` (`createFirstTerm`, `createTerm`, `switchActiveTerm`); tras `login()` un usuario nuevo está en `/bienvenida`.
+- Componentes disponibles: `Dialog`, `AlertDialog`, `Textarea`, `FormField`, `DeleteTermDialog` como patrón de confirmación fuerte.

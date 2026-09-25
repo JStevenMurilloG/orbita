@@ -37,3 +37,14 @@ select
   now(), now(), now()
 from auth.users u
 where u.email in ('a@orbita.test', 'b@orbita.test');
+
+-- Trimestres de ejemplo (la zona se toma del perfil). El primero que se inserta de cada
+-- usuario pasa a ser su trimestre activo y marca el onboarding (trigger terms_after_insert).
+insert into public.terms (id, user_id, name, year, start_date, end_date, status, description)
+values
+  ('a0000000-0000-4000-8000-000000000002', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+   'Segundo trimestre', 2026, '2026-07-13', '2026-10-02', 'active', null),
+  ('a0000000-0000-4000-8000-000000000001', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+   'Primer trimestre', 2026, '2026-04-06', '2026-06-26', 'archived', 'Trimestre ya cerrado.'),
+  ('b0000000-0000-4000-8000-000000000001', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+   'Semestre de otoño', 2026, '2026-09-07', '2026-12-18', 'active', null);

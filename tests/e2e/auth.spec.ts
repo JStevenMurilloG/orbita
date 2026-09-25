@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 import {
+  AFTER_LOGIN_URL,
   createConfirmedUser,
+  expectAfterLoginPage,
   DEFAULT_PASSWORD,
   getEmailLinkPath,
   login,
@@ -34,7 +36,7 @@ test.describe("Fase 1 · autenticación", () => {
 
     // El enlace del correo confirma la cuenta y abre la sesión.
     await page.goto(await getEmailLinkPath(email, "Confirma tu cuenta"));
-    await expect(page).toHaveURL(/\/hoy$/);
+    await expect(page).toHaveURL(/\/bienvenida$/);
     await openUserMenu(page);
     await expect(page.getByRole("menu")).toContainText("Ana Registro");
     await expect(page.getByRole("menu")).toContainText(email);
@@ -97,16 +99,16 @@ test.describe("Fase 1 · autenticación", () => {
     await page.getByLabel("Correo").fill(user.email);
     await page.getByLabel("Contraseña", { exact: true }).fill(user.password);
     await page.getByRole("button", { name: "Iniciar sesión" }).click();
-    await expect(page).toHaveURL(/\/hoy$/);
+    await expectAfterLoginPage(page);
   });
 
   test("con sesión iniciada, /login y /registro llevan a Hoy", async ({ page }) => {
     const user = await createConfirmedUser();
     await login(page, user.email, user.password);
     await page.goto("/login");
-    await expect(page).toHaveURL(/\/hoy$/);
+    await expect(page).toHaveURL(AFTER_LOGIN_URL);
     await page.goto("/registro");
-    await expect(page).toHaveURL(/\/hoy$/);
+    await expect(page).toHaveURL(AFTER_LOGIN_URL);
   });
 
   test("un enlace de correo inválido lleva al login con aviso", async ({ page }) => {
@@ -133,7 +135,7 @@ test.describe("Fase 1 · recuperación de contraseña", () => {
     await page.getByLabel("Nueva contraseña", { exact: true }).fill(newPassword);
     await page.getByLabel("Repite la contraseña").fill(newPassword);
     await page.getByRole("button", { name: "Guardar contraseña" }).click();
-    await expect(page).toHaveURL(/\/hoy$/);
+    await expectAfterLoginPage(page);
     await expect(page.getByText("Contraseña actualizada.")).toBeVisible();
 
     await logout(page);
