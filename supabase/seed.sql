@@ -1,0 +1,1 @@
+-- Datos de desarrollo. Los usuarios de prueba A y B se añaden en la Fase 1 (tabla profiles).
