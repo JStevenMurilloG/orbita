@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { OrbitIcon } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
-import { MOBILE_NAV, PRIMARY_NAV, SECONDARY_NAV } from "./nav-items";
-import { NavLink } from "./nav-link";
+import { updateThemeAction } from "@/features/profile/actions";
+import { UserMenu } from "@/features/profile/components/user-menu";
+import { NavList } from "./nav-list";
 import { TermSwitcher } from "./term-switcher";
 import { ThemeToggle } from "./theme-toggle";
 
@@ -22,9 +23,11 @@ function Brand() {
 export function AppShell({
   children,
   termName,
+  user,
 }: {
   children: React.ReactNode;
   termName?: string | null;
+  user: { fullName: string; email: string | null };
 }) {
   return (
     <div className="flex min-h-dvh w-full">
@@ -35,18 +38,15 @@ export function AppShell({
         <Brand />
         <TermSwitcher termName={termName} />
         <nav className="flex flex-col gap-1">
-          {PRIMARY_NAV.map((item) => (
-            <NavLink key={item.href} item={item} />
-          ))}
+          <NavList section="primary" />
         </nav>
         <Separator />
         <nav className="flex flex-col gap-1" aria-label="Navegación secundaria">
-          {SECONDARY_NAV.map((item) => (
-            <NavLink key={item.href} item={item} />
-          ))}
+          <NavList section="secondary" />
         </nav>
-        <div className="mt-auto flex items-center justify-end">
-          <ThemeToggle />
+        <div className="mt-auto flex items-center justify-between gap-2">
+          <UserMenu fullName={user.fullName} email={user.email} />
+          <ThemeToggle persist={updateThemeAction} />
         </div>
       </aside>
 
@@ -57,7 +57,8 @@ export function AppShell({
             <div className="max-w-44">
               <TermSwitcher termName={termName} />
             </div>
-            <ThemeToggle />
+            <ThemeToggle persist={updateThemeAction} />
+            <UserMenu fullName={user.fullName} email={user.email} />
           </div>
         </header>
 
@@ -69,9 +70,7 @@ export function AppShell({
           aria-label="Navegación móvil"
           className="fixed inset-x-0 bottom-0 z-10 grid grid-cols-4 border-t bg-background/95 px-2 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
         >
-          {MOBILE_NAV.map((item) => (
-            <NavLink key={item.href} item={item} compact />
-          ))}
+          <NavList section="mobile" compact />
         </nav>
       </div>
     </div>

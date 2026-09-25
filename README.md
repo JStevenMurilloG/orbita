@@ -28,6 +28,8 @@ npm run dev               # http://localhost:3000
 
 Los puertos de Supabase local usan el rango 554xx para no chocar con otros proyectos.
 
+`seed.sql` crea dos cuentas de prueba ya confirmadas: `a@orbita.test` y `b@orbita.test` (contraseña `orbita-dev-123`). Los correos de Auth (confirmación, recuperación, cambio de correo) se ven en Mailpit: http://127.0.0.1:55424.
+
 ## Scripts
 
 | Script                           | Qué hace                                              |

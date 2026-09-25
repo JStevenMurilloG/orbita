@@ -6,6 +6,7 @@ export const ERROR_CODES = {
   UNAUTHENTICATED: { status: 401, message: "Tu sesión expiró. Inicia sesión de nuevo." },
   INVALID_CREDENTIALS: { status: 401, message: "Correo o contraseña incorrectos." },
   EMAIL_NOT_CONFIRMED: { status: 403, message: "Confirma tu correo antes de iniciar sesión." },
+  LINK_INVALID: { status: 400, message: "El enlace no es válido o expiró. Pide uno nuevo." },
   NOT_FOUND: { status: 404, message: "No encontramos este elemento." },
   GONE: { status: 410, message: "Este elemento fue eliminado." },
   VALIDATION: { status: 422, message: "Revisa los datos del formulario." },

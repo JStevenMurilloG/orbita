@@ -1,4 +1,8 @@
+import { loadEnvConfig } from "@next/env";
 import { defineConfig, devices } from "@playwright/test";
+
+// Mismas variables que la app (.env.local en local; en CI llegan por el entorno).
+loadEnvConfig(process.cwd());
 
 const PORT = Number(process.env.E2E_PORT ?? 3100);
 const baseURL = process.env.E2E_BASE_URL ?? `http://localhost:${PORT}`;
@@ -30,5 +34,7 @@ export default defineConfig({
         url: baseURL,
         timeout: 300_000,
         reuseExistingServer: !process.env.CI,
+        // Los enlaces de Auth (emailRedirectTo) deben apuntar al servidor de los tests.
+        env: { NEXT_PUBLIC_SITE_URL: baseURL },
       },
 });

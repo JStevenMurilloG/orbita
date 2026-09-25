@@ -5,7 +5,20 @@ export type Database = {
   
   "public": {
           Tables: {
-            [_ in never]: never
+            "profiles": {
+                  Row: {
+                    "created_at": string,"full_name": string,"id": string,"onboarded_at": string | null,"theme": string,"timezone": string,"updated_at": string,"week_starts_on": number
+                  }
+                  Insert: {
+                    "created_at"?: string,"full_name": string,"id": string,"onboarded_at"?: string | null,"theme"?: string,"timezone"?: string,"updated_at"?: string,"week_starts_on"?: number
+                  }
+                  Update: {
+                    "created_at"?: string,"full_name"?: string,"id"?: string,"onboarded_at"?: string | null,"theme"?: string,"timezone"?: string,"updated_at"?: string,"week_starts_on"?: number
+                  }
+                  Relationships: [
+                    
+                  ]
+                }
           }
           Views: {
             [_ in never]: never
@@ -13,6 +26,9 @@ export type Database = {
           Functions: {
             "immutable_unaccent":
 { Args: { "input": string }; Returns: string
+                           },
+"is_valid_timezone":
+{ Args: { "tz": string }; Returns: boolean
                            },
 "tables_without_rls":
 { Args: Record<PropertyKey, never>; Returns: {

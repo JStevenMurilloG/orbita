@@ -1,25 +1,38 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { LogInIcon } from "lucide-react";
-import { EmptyState } from "@/components/feedback/empty-state";
+import { redirect } from "next/navigation";
+import { CircleAlertIcon } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AuthCard, AuthLink } from "@/features/auth/components/auth-card";
+import { LoginForm } from "@/features/auth/components/login-form";
+import { safeNextPath } from "@/features/auth/utils";
+import { getUser } from "@/lib/auth";
+import { ERROR_CODES } from "@/lib/errors";
 
 export const metadata: Metadata = { title: "Iniciar sesión" };
 
-/** Marcador de Fase 0: el formulario de inicio de sesión llega en la Fase 1. */
-export default function LoginPage() {
+export default async function LoginPage({ searchParams }: PageProps<"/login">) {
+  const { next, error } = await searchParams;
+  const nextPath = safeNextPath(typeof next === "string" ? next : undefined);
+
+  if (await getUser()) redirect(nextPath);
+
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center p-6">
-      <h1 className="sr-only">Iniciar sesión</h1>
-      <EmptyState
-        icon={LogInIcon}
-        title="Inicio de sesión en construcción"
-        description="Las cuentas de usuario llegan en la Fase 1."
-        action={
-          <Link href="/" className="text-sm text-primary underline-offset-4 hover:underline">
-            Volver al inicio
-          </Link>
-        }
-      />
-    </main>
+    <AuthCard
+      title="Iniciar sesión"
+      description="Entra a tu espacio académico."
+      footer={
+        <>
+          ¿No tienes cuenta? <AuthLink href="/registro">Regístrate</AuthLink>
+        </>
+      }
+    >
+      {error === "enlace" ? (
+        <Alert variant="destructive">
+          <CircleAlertIcon aria-hidden />
+          <AlertDescription>{ERROR_CODES.LINK_INVALID.message}</AlertDescription>
+        </Alert>
+      ) : null}
+      <LoginForm next={nextPath} />
+    </AuthCard>
   );
 }

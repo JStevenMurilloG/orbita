@@ -44,6 +44,9 @@ export default function Home() {
             <Button asChild size="lg">
               <Link href="/hoy">Entrar</Link>
             </Button>
+            <Button asChild size="lg" variant="outline">
+              <Link href="/registro">Crear cuenta</Link>
+            </Button>
           </div>
         </section>
 

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { AppError, isAppError, type SerializedError } from "./app-error";
+import { isAuthLikeError, mapAuthError } from "./auth";
 import { mapPostgresError, type PostgrestLikeError } from "./postgres";
 
 /** Resultado de una Server Action: nunca lanza hacia el cliente. */
@@ -34,6 +35,8 @@ export function toAppError(error: unknown): AppError {
     }
     return new AppError("VALIDATION", { fields, cause: error });
   }
+  // Antes que Postgres: los errores de Auth también tienen code + message.
+  if (isAuthLikeError(error)) return mapAuthError(error);
   if (isPostgrestLikeError(error)) return mapPostgresError(error);
   return new AppError("INTERNAL", { cause: error });
 }
