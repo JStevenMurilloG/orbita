@@ -3,6 +3,7 @@ import { cache } from "react";
 import { getCurrentProfile } from "@/features/profile/queries";
 import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { uuidSchema } from "@/lib/validation/common";
 import { listTerms } from "./service";
 import type { Term } from "./types";
 
@@ -12,6 +13,13 @@ export const getCurrentTerms = cache(async (): Promise<Term[]> => {
   if (!user) return [];
   return listTerms(await createClient());
 });
+
+/** Trimestre propio por id (de la lista ya cargada para el layout), o `null`. */
+export async function findCurrentTerm(termId: string): Promise<Term | null> {
+  if (!uuidSchema.safeParse(termId).success) return null;
+  const terms = await getCurrentTerms();
+  return terms.find((term) => term.id === termId) ?? null;
+}
 
 /** Trimestre activo del perfil (`profiles.active_term_id`), o `null` si no hay. */
 export const getActiveTerm = cache(async (): Promise<Term | null> => {

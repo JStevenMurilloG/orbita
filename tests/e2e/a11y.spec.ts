@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { createConfirmedUser, login } from "./helpers/auth";
+import { createAndAssignTeacher, createCourse, teacherCombobox } from "./helpers/courses";
 import { createFirstTerm } from "./helpers/terms";
 
 async function expectNoSeriousViolations(page: Page) {
@@ -13,7 +14,7 @@ async function expectNoSeriousViolations(page: Page) {
   expect(serious, JSON.stringify(serious, null, 2)).toEqual([]);
 }
 
-test.describe("Fases 1–2 · accesibilidad", () => {
+test.describe("Fases 1–3 · accesibilidad", () => {
   for (const colorScheme of ["light", "dark"] as const) {
     test(`páginas públicas de autenticación (${colorScheme})`, async ({ page }) => {
       await page.emulateMedia({ colorScheme });
@@ -63,6 +64,70 @@ test.describe("Fases 1–2 · accesibilidad", () => {
         .click();
       await expect(page.getByTestId("read-only-banner")).toBeVisible();
       await expectNoSeriousViolations(page);
+    });
+
+    test(`clases y docentes (${colorScheme})`, async ({ page }) => {
+      test.setTimeout(180_000); // crea una clase por cada color de la paleta
+      const user = await createConfirmedUser();
+      await page.emulateMedia({ colorScheme });
+      await login(page, user.email, user.password);
+      await createFirstTerm(page, {
+        name: "Segundo trimestre",
+        start: "2026-07-13",
+        end: "2026-10-02",
+      });
+
+      await page.goto("/clases");
+      await expect(page.getByRole("heading", { level: 1, name: "Clases" })).toBeVisible();
+      await expectNoSeriousViolations(page); // estado vacío
+
+      await page.getByRole("link", { name: "Nueva clase" }).click();
+      await expect(page.getByRole("heading", { level: 1, name: "Nueva clase" })).toBeVisible();
+      await page.getByRole("button", { name: "Crear clase" }).click();
+      await expect(page.getByText("El nombre es obligatorio.")).toBeVisible();
+      await expectNoSeriousViolations(page); // formulario con error y selector de color
+
+      // Una clase de cada color: la lista muestra la paleta completa.
+      const colors = [
+        "Rojo",
+        "Naranja",
+        "Ámbar",
+        "Lima",
+        "Verde",
+        "Verde azulado",
+        "Cian",
+        "Azul",
+        "Violeta",
+        "Rosa",
+        "Gris",
+      ];
+      const course = await createCourse(page, {
+        name: "Cálculo diferencial",
+        code: "MAT-204",
+        room: "B-204",
+        color: "Índigo",
+        icon: "📐",
+      });
+      await createAndAssignTeacher(page, course, {
+        name: "Marta Gómez",
+        email: "marta@uni.test",
+        phone: "+57 601 555 0101",
+        office: "Bloque B",
+      });
+      await expectNoSeriousViolations(page); // pestaña Profesor con docente
+      await page.getByRole("button", { name: "Cambiar docente" }).click();
+      await teacherCombobox(page).fill("m");
+      await expect(page.getByRole("listbox")).toBeVisible();
+      await expectNoSeriousViolations(page); // buscador abierto
+
+      for (const color of colors) {
+        await createCourse(page, { name: `Clase ${color}`, code: "X-1", color });
+      }
+      for (const path of [course, `${course}/editar`, `${course}/tareas`, "/clases"]) {
+        await page.goto(path);
+        await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+        await expectNoSeriousViolations(page);
+      }
     });
   }
 });

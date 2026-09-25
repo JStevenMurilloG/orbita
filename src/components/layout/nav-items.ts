@@ -42,6 +42,11 @@ export const MOBILE_NAV: NavItem[] = [
   PRIMARY_NAV[4],
 ];
 
+/** Vistas de un trimestre (`/trimestres/[termId]/clases`…) que corresponden a un atajo. */
+const TERM_VIEW = /^\/trimestres\/[^/]+(\/(?:clases|horario|calendario|tareas))(?:\/|$)/;
+
 export function isActivePath(pathname: string, href: string): boolean {
+  const termView = TERM_VIEW.exec(pathname)?.[1];
+  if (termView) return href === termView;
   return pathname === href || pathname.startsWith(`${href}/`);
 }

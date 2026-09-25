@@ -5,7 +5,51 @@ export type Database = {
   
   "public": {
           Tables: {
-            "profiles": {
+            "course_teachers": {
+                  Row: {
+                    "course_id": string,"created_at": string,"is_primary": boolean,"role": string | null,"teacher_id": string,"updated_at": string,"user_id": string
+                  }
+                  Insert: {
+                    "course_id": string,"created_at"?: string,"is_primary"?: boolean,"role"?: string | null,"teacher_id": string,"updated_at"?: string,"user_id"?: string
+                  }
+                  Update: {
+                    "course_id"?: string,"created_at"?: string,"is_primary"?: boolean,"role"?: string | null,"teacher_id"?: string,"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "course_teachers_course_fkey"
+      columns: ["course_id","user_id"]
+isOneToOne: false
+      referencedRelation: "courses"
+      referencedColumns: ["id","user_id"]
+    },{
+      foreignKeyName: "course_teachers_teacher_fkey"
+      columns: ["teacher_id","user_id"]
+isOneToOne: false
+      referencedRelation: "teachers"
+      referencedColumns: ["id","user_id"]
+    }
+                  ]
+                },"courses": {
+                  Row: {
+                    "code": string | null,"color": string,"created_at": string,"credits": number | null,"deleted_at": string | null,"description": string | null,"icon": string | null,"id": string,"name": string,"position": number,"room": string | null,"term_id": string,"updated_at": string,"user_id": string
+                  }
+                  Insert: {
+                    "code"?: string | null,"color": string,"created_at"?: string,"credits"?: number | null,"deleted_at"?: string | null,"description"?: string | null,"icon"?: string | null,"id"?: string,"name": string,"position"?: number,"room"?: string | null,"term_id": string,"updated_at"?: string,"user_id"?: string
+                  }
+                  Update: {
+                    "code"?: string | null,"color"?: string,"created_at"?: string,"credits"?: number | null,"deleted_at"?: string | null,"description"?: string | null,"icon"?: string | null,"id"?: string,"name"?: string,"position"?: number,"room"?: string | null,"term_id"?: string,"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "courses_term_fkey"
+      columns: ["term_id","user_id"]
+isOneToOne: false
+      referencedRelation: "terms"
+      referencedColumns: ["id","user_id"]
+    }
+                  ]
+                },"profiles": {
                   Row: {
                     "active_term_id": string | null,"created_at": string,"full_name": string,"id": string,"onboarded_at": string | null,"theme": string,"timezone": string,"updated_at": string,"week_starts_on": number
                   }
@@ -23,6 +67,19 @@ isOneToOne: false
       referencedRelation: "terms"
       referencedColumns: ["id","user_id"]
     }
+                  ]
+                },"teachers": {
+                  Row: {
+                    "created_at": string,"email": string | null,"full_name": string,"id": string,"notes": string | null,"office": string | null,"office_hours": string | null,"phone": string | null,"updated_at": string,"user_id": string
+                  }
+                  Insert: {
+                    "created_at"?: string,"email"?: string | null,"full_name": string,"id"?: string,"notes"?: string | null,"office"?: string | null,"office_hours"?: string | null,"phone"?: string | null,"updated_at"?: string,"user_id"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"email"?: string | null,"full_name"?: string,"id"?: string,"notes"?: string | null,"office"?: string | null,"office_hours"?: string | null,"phone"?: string | null,"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    
                   ]
                 },"terms": {
                   Row: {
@@ -48,6 +105,12 @@ isOneToOne: false
                            },
 "is_valid_timezone":
 { Args: { "tz": string }; Returns: boolean
+                           },
+"reorder_courses":
+{ Args: { "p_course_ids": (string)[],"p_term_id": string }; Returns: undefined
+                           },
+"set_course_primary_teacher":
+{ Args: { "p_course_id": string,"p_teacher_id": string }; Returns: undefined
                            },
 "tables_without_rls":
 { Args: Record<PropertyKey, never>; Returns: {

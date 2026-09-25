@@ -7,8 +7,9 @@ Registro de lo que se ha construido en cada fase del [plan maestro](plan-maestro
 | 0 — Arquitectura y base técnica | ✅ Completada (con pendientes externos) | 2026-09-25 |
 | 1 — Autenticación y usuarios    | ✅ Completada (con pendientes externos) | 2026-09-25 |
 | 2 — Trimestres                  | ✅ Completada                           | 2026-09-25 |
-| 3 — Clases y docentes           | ⏳ Siguiente                            | —          |
-| 4–6 (MVP)                       | Pendiente                               | —          |
+| 3 — Clases y docentes           | ✅ Completada                           | 2026-09-25 |
+| 4 — Horario                     | ⏳ Siguiente                            | —          |
+| 5–6 (MVP)                       | Pendiente                               | —          |
 
 ---
 
@@ -122,3 +123,50 @@ Registro de lo que se ha construido en cada fase del [plan maestro](plan-maestro
 - Aislamiento: crear una clase en un trimestre ajeno debe fallar por la FK compuesta (23503 → `NOT_FOUND`).
 - Helpers E2E: `tests/e2e/helpers/terms.ts` (`createFirstTerm`, `createTerm`, `switchActiveTerm`); tras `login()` un usuario nuevo está en `/bienvenida`.
 - Componentes disponibles: `Dialog`, `AlertDialog`, `Textarea`, `FormField`, `DeleteTermDialog` como patrón de confirmación fuerte.
+
+---
+
+## Fase 3 — Clases y docentes
+
+### Hecho
+
+- **BD** (`20260925030000_courses_teachers.sql`):
+  - `courses`: FK compuesta `(term_id, user_id) → terms(id, user_id) ON DELETE CASCADE`, `UNIQUE (id, user_id)` y `UNIQUE (id, term_id, user_id)`; nombre 1–100, código ≤ 30, descripción ≤ 2000, `color` con CHECK contra los 12 tokens (un test unitario comprueba que coincide con `COURSE_COLORS`), `icon` (emoji, ≤ 16 code points), aula ≤ 50, `credits numeric(4,1) ≥ 0`, `position`, soft delete `deleted_at`. Índices `(term_id, position) WHERE deleted_at IS NULL` y `(term_id, user_id)` (cascada). Triggers: `set_updated_at`, `courses_assert_term_writable` (plantilla de la Fase 2) y `courses_before_write` (al crear, `position` = al final del trimestre; `deleted_at` lo fija la BD con `now()`). Privilegios por columna: `term_id` solo al crear (una clase no cambia de trimestre) y `position` solo al reordenar. RPC `reorder_courses(term_id, ids[])` (SECURITY INVOKER).
+  - `teachers`: reutilizables entre clases y trimestres (sin `term_id`); nombre 1–100, correo con formato, teléfono (dígitos, espacios, `()+.-`; 3–20 dígitos), oficina ≤ 100, horario de atención (texto libre) ≤ 500, notas ≤ 2000; índice `(user_id, lower(full_name))`.
+  - `course_teachers`: PK `(course_id, teacher_id)`, FKs compuestas a `courses` y `teachers` con `ON DELETE CASCADE`, `role`, `is_primary` e índice único parcial del docente principal. El índice es `(course_id, user_id) WHERE is_primary`: con solo `course_id`, un intento de otro usuario sobre una clase ajena fallaba por unicidad (23505) y revelaba que la clase existe; así falla por la FK (23503 → `NOT_FOUND`).
+  - Solo lectura: `course_teachers_assert_term_writable()` resuelve el trimestre a través de la clase y bloquea INSERT/UPDATE/DELETE si está archivado (deja pasar las cascadas); `teachers_before_delete()` impide borrar directamente un docente asignado a clases archivadas (la cascada al borrar la cuenta sí pasa). Los datos de contacto del docente sí se pueden editar (es una entidad del usuario, no del trimestre).
+  - RPC `set_course_primary_teacher(course_id, teacher_id)` (SECURITY INVOKER): quita al principal anterior y asigna el nuevo en una transacción.
+- **Seed**: A tiene 2 clases en el trimestre activo y 1 en el archivado (creada antes de archivarlo) y 2 docentes; B tiene 1 clase y 1 docente.
+- **features/courses**: esquemas Zod (mismos límites que la BD; créditos "4,5" → 4.5; un único emoji validado con `Intl.Segmenter`), `service.ts` (listar, obtener, `getWritableCourse`, crear, editar, borrado suave, restaurar, reordenar comprobando que la lista del cliente está al día), Server Actions `requireUser → parse → service → Result<T>`, `queries.ts` (`getTermCourses`, `getCourseWithTerm`, cacheadas por petición) y utilidades (`suggestCourseColor`: primer color libre del trimestre; `moveInOrder`; `formatCredits`; `courseToFormValues`).
+- **features/teachers**: esquemas, `service.ts` (listar, docentes de una clase, nombres de los docentes principales, crear —y asignar a una clase—, editar, `setPrimaryTeacher`, `unassignTeacher`), acciones, `queries.ts` y utilidades (`mailtoHref`, `telHref` RFC 3966, búsqueda sin tildes).
+- **UI**:
+  - `/clases` → `/trimestres/[activeTermId]/clases` (307 en el proxy; sin trimestre activo → `/trimestres`; `page.tsx` de respaldo). La navegación marca "Clases" también en `/trimestres/[id]/clases` (`isActivePath`).
+  - `/trimestres/[termId]/clases`: `CourseGrid` + `CourseCard` (franja y distintivo del color, emoji o inicial, código, docente, aula, créditos; toda la tarjeta enlaza a la clase), reordenar con "Mover antes/después" (optimista, accesible con teclado) y estado vacío. `/trimestres/[termId]/clases/nueva` con `CourseForm` (color sugerido, emojis frecuentes). La página del trimestre enlaza a "Ver clases".
+  - `/clases/[courseId]`: layout con cabecera, `CourseTabs` (Resumen, Tareas, Horario, Profesor; Cuadernos y Documentos "Próximamente") y `ReadOnlyBanner` si el trimestre está archivado. Resumen: datos, docente principal (`TeacherCard` con `mailto:`/`tel:`) y próximas sesiones/tareas como estados vacíos. Tareas y Horario: placeholders. Profesor: `CourseTeacherPanel` (editar datos en diálogo, cambiar, quitar con confirmación) y `TeacherCombobox` (patrón combobox ARIA 1.2: reutiliza un docente o crea uno nuevo con el nombre escrito). `/clases/[courseId]/editar`: `CourseForm` + `DeleteCourseDialog` (borrado suave con "Deshacer" en el aviso).
+  - `ColorPicker`: grupo de radios nativo con el nombre del color y ✓ en el elegido (no depende solo del color). El contraste AA de los 12 tokens en claro y oscuro se comprueba en `src/lib/design/__tests__/course-colors.test.ts` (texto del token sobre su fondo y sobre la tarjeta ≥ 4.5:1; ya cumplían).
+  - Trimestre archivado: sin crear, editar, reordenar ni gestionar docentes; las rutas directas (`/nueva`, `/editar`) muestran el aviso, y si un formulario abierto se envía después de archivar, muestra `TERM_ARCHIVED`.
+- **Tests**: Vitest 264 (85 nuevos: esquemas y utilidades de clases y docentes, contraste de la paleta, CHECK de colores, navegación); pgTAP 146 (68 nuevos: estructura y FKs compuestas, anon, posiciones, CHECKs, privilegios por columna, reordenar, docente principal único y reutilizable, A↔B sin lectura/edición/borrado/asignación cruzada —incluida clase en trimestre ajeno → 23503—, borrado suave, solo lectura de clases, asignaciones y borrado de docentes, cascadas desde el trimestre y la cuenta); Playwright 80 (desktop + móvil): crear clases + docente, `mailto:`/`tel:` con un clic, reutilizar docente con el teclado, reordenar persistente, editar/cambiar/quitar docente, editar y eliminar clase con deshacer, clases de otro trimestre y de otro usuario no aparecen, trimestre archivado en solo lectura con `TERM_ARCHIVED`, axe claro/oscuro con los 12 colores.
+
+### Decisiones y límites conocidos
+
+- La UI gestiona un único docente principal: "Cambiar docente" sustituye al anterior (se borra la asignación, el docente se conserva). El esquema ya admite varios docentes con `role`.
+- El buscador de docentes filtra en el cliente la lista completa del usuario (hasta 1000); `GET /teachers?q=` llegará con la API externa.
+- Eliminar docentes no tiene servicio ni UI todavía (la BD ya lo permite, con RLS y el bloqueo por clases archivadas); llegará con la gestión de docentes.
+- Reordenar con botones en lugar de arrastrar (accesible y sin dependencias); el arrastre queda para las mejoras de UX de MVP2 y reutilizará `reorder_courses`.
+- La papelera (restaurar más tarde, purga a los 30 días) es de MVP2; ahora solo hay "Deshacer" inmediato.
+- Crear un docente y asignarlo son dos pasos en el servidor: antes se comprueba que la clase admite cambios para no dejar un docente creado a medias.
+- `/api/v1/courses` y `/api/v1/teachers` no se han construido (misma decisión que en Fases 1–2).
+- `npm run format:check` avisa de `.claude/launch.json` (configuración local del editor, sin versionar).
+
+### Pendiente (requiere cuentas del usuario)
+
+- Siguen abiertos los pendientes de Fases 0–2: proteger `main`, proyectos Supabase staging/prod, Vercel, SMTP con Resend y dominio.
+
+### Notas para la Fase 4
+
+- `schedule_entries`: FK `(course_id, term_id, user_id) → courses(id, term_id, user_id) ON DELETE CASCADE` (garantiza que la clase es del mismo trimestre); tiene `term_id` → usar `public.assert_term_writable()` tal cual. Validar día 1–7, `end_time > start_time`, duración ≤ 12 h y vigencia dentro del trimestre; solapamientos permitidos con `warnings`.
+- Las clases en la papelera (`deleted_at` no nulo) no deben aparecer en el horario: filtrar por la clase (`getTermCourses` ya las excluye).
+- `/horario` debe redirigir a `/trimestres/[activeTermId]/horario`: generalizar el bloque de `/clases` en `src/lib/supabase/proxy.ts`. `isActivePath` ya marca "Horario" en `/trimestres/[id]/horario`.
+- Placeholders a sustituir: pestaña Horario (`/clases/[courseId]/horario`) y "Próximas sesiones" del Resumen (`/clases/[courseId]/page.tsx`).
+- Identidad visual de la clase: `CourseIcon`, `courseColorStyle(color)` y las variables `--course-<token>` / `--course-<token>-fg` (contraste verificado). La zona del trimestre está en `term.timezone`; `zonedWallTimeToInstant` (`src/lib/dates`) para expandir con DST.
+- Helpers E2E: `tests/e2e/helpers/courses.ts` (`createCourse`, `createAndAssignTeacher`, `teacherCombobox`).

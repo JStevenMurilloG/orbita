@@ -70,5 +70,22 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
+  // /clases es un atajo a las clases del trimestre activo (plan §22); sin trimestre activo,
+  // a la lista de trimestres. Mismo motivo que /hoy para decidirlo aquí.
+  if (isAuthenticated && pathname === "/clases") {
+    const { data: profile, error } = await supabase
+      .from("profiles")
+      .select("active_term_id")
+      .maybeSingle();
+    if (!error) {
+      const url = request.nextUrl.clone();
+      url.search = "";
+      url.pathname = profile?.active_term_id
+        ? `/trimestres/${profile.active_term_id}/clases`
+        : "/trimestres";
+      return redirectWithCookies(url, response);
+    }
+  }
+
   return response;
 }

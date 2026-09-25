@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { BookOpenIcon } from "lucide-react";
 import { notFound } from "next/navigation";
 import { ReadOnlyBanner } from "@/components/feedback/read-only-banner";
 import { PageHeader } from "@/components/layout/page-header";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ArchiveTermDialog } from "@/features/terms/components/archive-term-dialog";
 import { DeleteTermDialog } from "@/features/terms/components/delete-term-dialog";
@@ -10,22 +13,13 @@ import { TermForm } from "@/features/terms/components/term-form";
 import { TermStatusBadge } from "@/features/terms/components/term-status-badge";
 import { TermTransitionButton } from "@/features/terms/components/term-transition-button";
 import { termLabel } from "@/features/terms/labels";
-import { getActiveTerm, getCurrentTerms } from "@/features/terms/queries";
-import type { Term } from "@/features/terms/types";
+import { findCurrentTerm, getActiveTerm } from "@/features/terms/queries";
 import { formatCivilDateRange } from "@/lib/dates";
-import { uuidSchema } from "@/lib/validation/common";
-
-/** Trimestre propio por id (de la lista ya cargada en el layout), o `null`. */
-async function findTerm(termId: string): Promise<Term | null> {
-  if (!uuidSchema.safeParse(termId).success) return null;
-  const terms = await getCurrentTerms();
-  return terms.find((term) => term.id === termId) ?? null;
-}
 
 export async function generateMetadata({
   params,
 }: PageProps<"/trimestres/[termId]">): Promise<Metadata> {
-  const term = await findTerm((await params).termId);
+  const term = await findCurrentTerm((await params).termId);
   return { title: term ? termLabel(term) : "Trimestre" };
 }
 
@@ -54,7 +48,10 @@ function Section({
 }
 
 export default async function TermPage({ params }: PageProps<"/trimestres/[termId]">) {
-  const [term, activeTerm] = await Promise.all([findTerm((await params).termId), getActiveTerm()]);
+  const [term, activeTerm] = await Promise.all([
+    findCurrentTerm((await params).termId),
+    getActiveTerm(),
+  ]);
   if (!term) notFound();
 
   const isActiveTerm = activeTerm?.id === term.id;
@@ -88,6 +85,11 @@ export default async function TermPage({ params }: PageProps<"/trimestres/[termI
         }
         actions={
           <div className="flex flex-wrap gap-2">
+            <Button variant="outline" asChild>
+              <Link href={`/trimestres/${term.id}/clases`}>
+                <BookOpenIcon aria-hidden /> Ver clases
+              </Link>
+            </Button>
             {!isActiveTerm ? <SetActiveTermButton termId={term.id} /> : null}
             {term.status === "active" ? (
               <TermTransitionButton termId={term.id} transition="finish" />
