@@ -29,7 +29,7 @@ Registro de lo que se ha construido en cada fase del [plan maestro](plan-maestro
 
 ### Pendiente (requiere cuentas del usuario)
 
-- Crear repositorio remoto en GitHub y proteger `main` (el conector de GitHub falló al conectarse en esta sesión).
+- ~~Crear repositorio remoto en GitHub~~ ✅ `JStevenMurilloG/orbita` (push vía alias SSH `github.com-personal`). Falta proteger `main` en GitHub.
 - Proyectos Supabase **staging** y **prod** (plan Pro en prod) y enlazarlos (`supabase link`).
 - Proyecto en Vercel con previews por PR y variables de entorno (`.env.example`).
 - Dominio y nombre definitivos (§39 #18), necesarios para Resend (Fase 1) y Google OAuth (Fase 10).

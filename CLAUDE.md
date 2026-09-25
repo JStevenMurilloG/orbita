@@ -9,3 +9,4 @@
 - Fechas: nunca "hoy" con la hora del servidor; usar `src/lib/dates` con la zona del perfil/trimestre.
 - Supabase local usa puertos 554xx (`npm run db:start`). Correo local: http://127.0.0.1:55424.
 - Antes de cerrar una fase: `npm run check`, `npm run test:db`, `npm run test:e2e`, `npm run format:check`.
+- Git: remoto `origin` = `git@github.com-personal:JStevenMurilloG/orbita.git` (alias SSH de la cuenta personal en `~/.ssh/config`). Al cerrar cada fase: commit y `git push origin main`.
